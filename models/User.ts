@@ -7,6 +7,16 @@ export interface IUser extends Document {
   role: "student" | "manager" | "admin"
   institution?: string
   reward_points: number
+  // Address fields for Indian export compliance
+  address?: {
+    line1: string
+    line2?: string
+    city: string
+    state: string
+    postal_code: string
+    country: string
+  }
+  phone?: string
   created_at: Date
   updated_at: Date
 }
@@ -45,6 +55,45 @@ const UserSchema = new Schema<IUser>({
     type: Number,
     default: 0,
     min: [0, "Reward points cannot be negative"],
+  },
+  // Address fields for Indian export compliance
+  address: {
+    line1: {
+      type: String,
+      trim: true,
+      maxlength: [200, "Address line 1 cannot exceed 200 characters"],
+    },
+    line2: {
+      type: String,
+      trim: true,
+      maxlength: [200, "Address line 2 cannot exceed 200 characters"],
+    },
+    city: {
+      type: String,
+      trim: true,
+      maxlength: [100, "City cannot exceed 100 characters"],
+    },
+    state: {
+      type: String,
+      trim: true,
+      maxlength: [100, "State cannot exceed 100 characters"],
+    },
+    postal_code: {
+      type: String,
+      trim: true,
+      maxlength: [20, "Postal code cannot exceed 20 characters"],
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: "IN",
+      maxlength: [2, "Country code must be 2 characters"],
+    }
+  },
+  phone: {
+    type: String,
+    trim: true,
+    maxlength: [20, "Phone number cannot exceed 20 characters"],
   },
   created_at: {
     type: Date,

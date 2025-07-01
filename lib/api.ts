@@ -352,6 +352,21 @@ class ApiClient {
       method: "DELETE",
     })
   }
+
+  // Payment methods
+  async createPaymentSession(points: number) {
+    return this.request("/api/payment/create-checkout", {
+      method: "POST",
+      body: JSON.stringify({ points }),
+    })
+  }
+
+  async verifyPayment(sessionId: string) {
+    return this.request("/api/payment/verify", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    })
+  }
 }
 
 // Create a singleton instance
@@ -400,6 +415,10 @@ export const createSupportQuery = (queryData: Parameters<ApiClient["createSuppor
 export const updateSupportQuery = (queryId: string, updateData: Parameters<ApiClient["updateSupportQuery"]>[1]) =>
   apiClient.updateSupportQuery(queryId, updateData)
 export const deleteSupportQuery = (queryId: string) => apiClient.deleteSupportQuery(queryId)
+
+// Payment exports
+export const createPaymentSession = (points: number) => apiClient.createPaymentSession(points)
+export const verifyPayment = (sessionId: string) => apiClient.verifyPayment(sessionId)
 
 // Default export
 export default apiClient

@@ -12,11 +12,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   BookOpen, Award, Plus, ShoppingCart, Bell, LogOut, 
   Clock, CheckCircle, XCircle, Search, Gift, History, 
-  TrendingUp, BookMarked, Coins
+  TrendingUp, BookMarked, Coins, CreditCard
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { getCurrentUser, signOut, getBooks, purchaseBook } from "@/lib/api"
+import AddressForm from "@/components/AddressForm"
 
 export default function StudentDashboard() {
   const [user, setUser] = useState<any>(null)
@@ -30,6 +31,10 @@ export default function StudentDashboard() {
   const [conditionFilter, setConditionFilter] = useState("all")
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false)
   const [selectedBook, setSelectedBook] = useState<any>(null)
+  const [addPointsDialogOpen, setAddPointsDialogOpen] = useState(false)
+  const [pointsToAdd, setPointsToAdd] = useState("")
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [addressFormOpen, setAddressFormOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -112,6 +117,60 @@ export default function StudentDashboard() {
     router.push("/dashboard/student/donate")
   }
 
+  const handleAddPoints = async () => {
+    if (!pointsToAdd || parseInt(pointsToAdd) <= 0 || parseInt(pointsToAdd) > 10000) {
+      alert("Please enter a valid amount between 1 and 10000 points")
+      return
+    }
+
+    // Check if user has address information (required for Indian export regulations)
+    if (!user?.address?.line1 || !user?.address?.city || !user?.address?.state || !user?.address?.postal_code || !user?.phone) {
+      alert("Address information is required for payment processing. Please update your profile first.")
+      setAddPointsDialogOpen(false)
+      setAddressFormOpen(true)
+      return
+    }
+
+    setPaymentLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        alert("Please login to continue")
+        return
+      }
+
+      const response = await fetch("/api/payment/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ points: parseInt(pointsToAdd) })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Redirect to Stripe checkout
+        window.location.href = data.url
+      } else {
+        alert(data.error || "Failed to create payment session")
+      }
+    } catch (error: any) {
+      alert("Failed to create payment session")
+      console.error("Payment error:", error)
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  const handleAddressUpdated = (updatedUser: any) => {
+    setUser(updatedUser)
+    // After address is updated, show the add points dialog again
+    setAddressFormOpen(false)
+    setAddPointsDialogOpen(true)
+  }
+
   const filteredBooks = availableBooks.filter(book => {
     const searchLower = searchTerm.toLowerCase()
     const matchesSearch = book.title.toLowerCase().includes(searchLower) ||
@@ -174,6 +233,9 @@ export default function StudentDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm">Profile</Button>
+                </Link>
                 <Link href="/help">
                   <Button variant="ghost" size="sm">Help</Button>
                 </Link>
@@ -197,7 +259,15 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{user?.reward_points || 0}</div>
-              <p className="text-xs text-muted-foreground">Available to spend</p>
+              <p className="text-xs text-muted-foreground mb-3">Available to spend</p>
+              <Button 
+                size="sm" 
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={() => setAddPointsDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Points
+              </Button>
             </CardContent>
           </Card>
           
@@ -651,6 +721,91 @@ export default function StudentDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add Points Dialog */}
+      <Dialog open={addPointsDialogOpen} onOpenChange={setAddPointsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Reward Points</DialogTitle>
+            <DialogDescription>
+              Purchase reward points using Stripe payment. 1 Point = ₹1 INR
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Points to Add</label>
+              <Input
+                type="number"
+                placeholder="Enter points (1-10000)"
+                value={pointsToAdd}
+                onChange={(e) => setPointsToAdd(e.target.value)}
+                min="1"
+                max="10000"
+              />
+              <p className="text-xs text-gray-500">
+                Minimum: 1 point (₹1), Maximum: 10000 points (₹10,000)
+              </p>
+            </div>
+            
+            {pointsToAdd && parseInt(pointsToAdd) > 0 && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">Points to Add:</span>
+                  <span className="font-semibold text-green-600">+{pointsToAdd} points</span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">Amount to Pay:</span>
+                  <span className="font-semibold text-blue-600">₹{pointsToAdd} INR</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">New Balance:</span>
+                  <span className="text-sm font-medium">
+                    {(user?.reward_points || 0) + parseInt(pointsToAdd)} points
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setAddPointsDialogOpen(false)
+                  setPointsToAdd("")
+                }} 
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddPoints} 
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                disabled={paymentLoading || !pointsToAdd || parseInt(pointsToAdd) <= 0}
+              >
+                {paymentLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay with Stripe
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Address Form Dialog */}
+      <AddressForm
+        user={user}
+        open={addressFormOpen}
+        onOpenChange={setAddressFormOpen}
+        onAddressUpdated={handleAddressUpdated}
+      />
     </div>
   )
 }
