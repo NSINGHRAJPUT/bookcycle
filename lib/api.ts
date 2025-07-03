@@ -1,3 +1,5 @@
+  import {toast} from 'sonner';
+
 // API client for BookCycle platform
 class ApiClient {
   private baseUrl: string
@@ -48,13 +50,28 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(userData),
     })
-
+    console.log("SignUp response:::::", data)
     if (data.token) {
       this.token = data.token
       if (typeof window !== "undefined") {
         localStorage.setItem("token", data.token)
       }
+            toast.success('Registration successful!');
+      
     }
+    if (data) {
+        // Store token
+        localStorage.setItem("token", data.token)
+
+        // Redirect based on role
+        if (data.user.role === "student") {
+          window.location.href = "/dashboard/student"
+        } else if (data.user.role === "manager") {
+          window.location.href = "/dashboard/manager"
+        } else {
+          window.location.href = "/dashboard/admin"
+        }
+      }
 
     return data
   }

@@ -12,6 +12,8 @@ import { BookOpen, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signUp } from "@/lib/api"
+import { toast } from 'sonner';
+ 
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -31,7 +33,7 @@ export default function RegisterPage() {
     setError("")
 
     try {
-      const { data, error } = await signUp({
+      const { data } = await signUp({
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -39,24 +41,13 @@ export default function RegisterPage() {
         institution: formData.role === "manager" ? formData.institution : undefined,
       })
 
-      if (error) {
-        setError(error)
-        return
-      }
+      // if (error) {
+      //   setError(error)
+      //   return
+      // }
+      console.log("Registration response:", data)
+     
 
-      if (data) {
-        // Store token
-        localStorage.setItem("token", data.token)
-
-        // Redirect based on role
-        if (data.user.role === "student") {
-          router.push("/dashboard/student")
-        } else if (data.user.role === "manager") {
-          router.push("/dashboard/manager")
-        } else {
-          router.push("/dashboard/admin")
-        }
-      }
     } catch (err: any) {
       setError(err.message || "Registration failed")
     } finally {
@@ -68,7 +59,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-4 cursor-pointer" onClick={() => router.push("/")}>
             <BookOpen className="h-8 w-8 text-green-600" />
             <h1 className="text-2xl font-bold text-green-600">BookCycle</h1>
           </div>
